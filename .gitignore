@@ -9,3 +9,7 @@
 .svn
 .vscode
 tags
+/bin-int
+/bin
+BGFX.vcxproj
+BGFX.vcxproj.filters
