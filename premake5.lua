@@ -1,9 +1,8 @@
-project "BGFX"
+project "bgfx"
 	kind "StaticLib"
 	language "C++"
-	cppdialect "C++17"
+	cppdialect "C++20"
 	staticruntime "off"
-
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -16,18 +15,40 @@ project "BGFX"
 		"include/**.h"
 	}
 
+	removefiles
+	{
+		"src/amalgamated.cpp"
+	}
+
 	includedirs
 	{
 		"include",
-		"src"
+		"src",
+		"3rdparty",
+		"3rdparty/khronos",
+		"3rdparty/directx-headers/include/directx",
+		"%{IncludeDir.bx}",
+		"%{IncludeDir.bimg}"
 	}
 
-    filter "system:windows"
+	links
+	{
+		"bx",
+		"bimg"
+	}
+	
+	filter "system:windows"
 		systemversion "latest"
+		buildoptions { "/Zc:__cplusplus", "/Zc:preprocessor" }
+        exceptionhandling "Off"
 
 	filter "configurations:Debug"
 		runtime "Debug"
 		symbols "on"
+		defines
+        {
+            "BX_CONFIG_DEBUG"
+        }
 
 	filter "configurations:Release"
 		runtime "Release"
