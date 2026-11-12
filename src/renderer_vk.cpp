@@ -8137,6 +8137,30 @@ retry:
 
 		uint32_t idx = UINT32_MAX;
 
+		// Claude Slop (JeanDoute Engine)
+		// Without vsync, prefer MAILBOX when available: it never blocks the present and never tears,
+		// unlike IMMEDIATE. Used by the swap chains of secondary windows (see FrameBufferVK::create).
+		if (!_vsync)
+		{
+			for (uint32_t ii = 0; ii < BX_COUNTOF(s_presentMode) && UINT32_MAX == idx; ++ii)
+			{
+				if (s_presentMode[ii].mode != VK_PRESENT_MODE_MAILBOX_KHR)
+				{
+					continue;
+				}
+
+				for (uint32_t jj = 0; jj < numPresentModes; ++jj)
+				{
+					if (presentModes[jj] == VK_PRESENT_MODE_MAILBOX_KHR)
+					{
+						idx = ii;
+						break;
+					}
+				}
+			}
+		}
+		// End Claude Slop
+
 		for (uint32_t ii = 0; ii < BX_COUNTOF(s_presentMode) && UINT32_MAX == idx; ++ii)
 		{
 			for (uint32_t jj = 0; jj < numPresentModes; ++jj)
@@ -8339,6 +8363,13 @@ retry:
 		if (_denseIdx != UINT16_MAX)
 		{
 			resolution.reset &= ~BGFX_RESET_MSAA_MASK;
+
+			// Claude Slop (JeanDoute Engine)
+			// Secondary window: never wait for the vertical blank here. Every window is presented one after
+			// the other in flip(): with vsync on all of them, a frame waited one vblank per window (two
+			// windows = half the frame rate). The main back buffer keeps the vsync and paces the frames.
+			resolution.reset &= ~BGFX_RESET_VSYNC;
+			// End Claude Slop
 		}
 
 		result = m_swapChain.create(s_renderVK->m_commandBuffer, _nwh, resolution);

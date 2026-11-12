@@ -2388,7 +2388,10 @@ namespace bgfx { namespace d3d11
 
 				for (uint32_t ii = 1, num = m_numWindows; ii < num && SUCCEEDED(hr); ++ii)
 				{
-					hr = m_frameBuffers[m_windows[ii].idx].present(syncInterval);
+					// Claude Slop (JeanDoute Engine): secondary windows never wait for the vblank (one wait per
+					// window halved the frame rate); the main swap chain keeps the vsync and paces the frames.
+					BX_UNUSED(syncInterval);
+					hr = m_frameBuffers[m_windows[ii].idx].present(0);
 				}
 
 				if (SUCCEEDED(hr) )

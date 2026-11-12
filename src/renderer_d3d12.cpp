@@ -2052,7 +2052,9 @@ namespace bgfx { namespace d3d12
 				for (uint32_t ii = 1, num = m_numWindows; ii < num && SUCCEEDED(hr); ++ii)
 				{
 					FrameBufferD3D12& frameBuffer = m_frameBuffers[m_windows[ii].idx];
-					hr = frameBuffer.present(syncInterval, presentFlags);
+					// Claude Slop (JeanDoute Engine): secondary windows never wait for the vblank (one wait per
+					// window halved the frame rate); the main swap chain below keeps the vsync and paces the frames.
+					hr = frameBuffer.present(0, 0);
 				}
 
 				if (SUCCEEDED(hr)
