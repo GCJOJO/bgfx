@@ -2594,7 +2594,22 @@ VK_IMPORT_DEVICE
 
 			uint16_t denseIdx = m_numWindows++;
 			m_windows[denseIdx] = _handle;
-			VK_CHECK(m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _width, _height, _format, _depthFormat) );
+			// Claude Slop (JeanDoute Engine)
+			// A window whose swapchain can't be created now (minimized between the request and this frame,
+			// display turned off, surface lost...) is not fatal: the frame buffer stays without swapchain, never
+			// renderable (its views are skipped, nothing is presented) until the application creates it again.
+			FrameBufferVK& frameBuffer = m_frameBuffers[_handle.idx];
+			const VkResult result = frameBuffer.create(denseIdx, _nwh, _width, _height, _format, _depthFormat);
+			if (VK_SUCCESS != result)
+			{
+				BX_TRACE("Create frame buffer of window %p (%dx%d) failed %d: %s, the window is not drawn."
+					, _nwh, _width, _height, result, getName(result) );
+				frameBuffer.m_nwh         = _nwh;		// a window: destroyFrameBuffer() releases its slot
+				frameBuffer.m_denseIdx    = denseIdx;
+				frameBuffer.m_needPresent = false;
+				frameBuffer.m_swapChain.m_needPresent = false;
+			}
+			// End Claude Slop
 		}
 
 		void destroyFrameBuffer(FrameBufferHandle _handle) override
@@ -8573,7 +8588,11 @@ retry:
 		{
 			acquired = m_swapChain.acquire(_commandBuffer);
 			m_needPresent = m_swapChain.m_needPresent;
-			m_currentFramebuffer = m_swapChain.m_backBufferFrameBuffer[m_swapChain.m_backBufferColorIdx];
+			// Claude Slop (JeanDoute Engine): no swapchain (its creation failed): no back buffer to read
+			m_currentFramebuffer = VK_NULL_HANDLE != m_swapChain.m_swapChain
+				? m_swapChain.m_backBufferFrameBuffer[m_swapChain.m_backBufferColorIdx]
+				: VK_NULL_HANDLE
+				;
 		}
 
 		m_needResolve = true;
@@ -8593,7 +8612,8 @@ retry:
 	{
 		return false
 			|| (NULL == m_nwh)
-			|| m_swapChain.m_needPresent
+			// Claude Slop (JeanDoute Engine): a window whose swapchain could not be created is never drawn
+			|| (VK_NULL_HANDLE != m_swapChain.m_swapChain && m_swapChain.m_needPresent)
 			;
 	}
 
